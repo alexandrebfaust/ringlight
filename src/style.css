@@ -446,6 +446,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .option:first-of-type { padding-top: 0; }
 .option:last-of-type { padding-bottom: 0; }
 .option + .option { border-top: 1px solid var(--line); }
+.option.spaced { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 
 select {
   max-width: 62%;

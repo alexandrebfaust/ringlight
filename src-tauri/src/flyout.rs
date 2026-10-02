@@ -37,10 +37,6 @@ fn window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(LABEL)
 }
 
-pub fn is_visible(app: &AppHandle) -> bool {
-    window(app).is_some_and(|w| w.is_visible().unwrap_or(false))
-}
-
 /// Single click on the tray icon: open the panel, or close it if it's open.
 pub fn toggle(app: &AppHandle, icon: Rect) {
     let Some(w) = window(app) else { return };

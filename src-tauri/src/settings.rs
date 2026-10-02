@@ -58,6 +58,10 @@ pub struct Settings {
 
     /// `"primary"`, `"all"` or a monitor name (e.g. `\\.\DISPLAY1`).
     pub monitor: String,
+    /// Keep the light inside the work area, so it never covers the taskbar.
+    pub avoid_taskbar: bool,
+    /// Keep the settings window always on top, above the light.
+    pub settings_on_top: bool,
     pub hide_from_capture: bool,
     pub auto_camera: bool,
     /// Global shortcut in global-hotkey syntax (e.g. `Ctrl+Alt+KeyL`); empty disables it.
@@ -102,6 +106,8 @@ impl Default for Settings {
             softness: 60,
             radius: 24,
             monitor: "primary".into(),
+            avoid_taskbar: true,
+            settings_on_top: true,
             hide_from_capture: true,
             auto_camera: false,
             hotkey: "Ctrl+Alt+KeyL".into(),

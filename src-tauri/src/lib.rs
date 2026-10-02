@@ -47,9 +47,18 @@ fn text(app: &AppHandle) -> &'static i18n::Text {
 /// Propagates a settings change to the overlays, tray, windows and disk.
 fn changed(app: &AppHandle) {
     app.state::<AppState>().dirty.store(true, Ordering::SeqCst);
+    apply_settings_on_top(app);
     overlay::request_sync(app);
     tray::refresh(app);
     let _ = app.emit("settings-changed", current(app));
+}
+
+/// The settings window can only sit above the light (an always-on-top
+/// window) by being always on top too; the overlay sync then stacks it above.
+fn apply_settings_on_top(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("settings") {
+        let _ = w.set_always_on_top(current(app).settings_on_top);
+    }
 }
 
 fn set_enabled_internal(app: &AppHandle, on: bool) {
@@ -319,6 +328,7 @@ pub fn run() {
             }
             tray::create(&handle)?;
             flyout::create(&handle)?;
+            apply_settings_on_top(&handle);
             overlay::sync(&handle);
             if !hidden {
                 show_settings(&handle);

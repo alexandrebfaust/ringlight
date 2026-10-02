@@ -216,6 +216,8 @@ function renderAll() {
   renderLanguages();
   $("hideFromCapture").checked = s.hideFromCapture;
   $("autoCamera").checked = s.autoCamera;
+  $("avoidTaskbar").checked = s.avoidTaskbar;
+  $("settingsOnTop").checked = s.settingsOnTop;
   $("autostart").checked = s.autostart;
   renderHotkey();
 }
@@ -446,7 +448,7 @@ function bind() {
     push();
   });
 
-  for (const id of ["hideFromCapture", "autoCamera"]) {
+  for (const id of ["hideFromCapture", "autoCamera", "avoidTaskbar", "settingsOnTop"]) {
     $(id).addEventListener("change", (e) => {
       s[id] = e.target.checked;
       push();

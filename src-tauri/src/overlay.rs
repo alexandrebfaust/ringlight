@@ -60,8 +60,6 @@ pub fn sync(app: &AppHandle) {
         state.hide_generation.fetch_add(1, Ordering::SeqCst);
     }
 
-    // While the tray panel is open it stays on top; the overlays wait.
-    let raise = !flyout::is_visible(app);
     for (m, label) in targets.iter().zip(&wanted) {
         let w = match app.get_webview_window(label) {
             Some(w) => w,
@@ -73,15 +71,31 @@ pub fn sync(app: &AppHandle) {
                 }
             },
         };
-        place(&w, m);
+        place(&w, m, s.avoid_taskbar);
         let _ = w.set_content_protected(s.hide_from_capture);
         if s.enabled {
-            win::show(&w, raise);
+            win::show(&w);
         }
     }
 
-    if !s.enabled {
+    if s.enabled {
+        raise_above_overlays(app, s.settings_on_top);
+    } else {
         schedule_hide(app);
+    }
+}
+
+/// Stacks the windows that must stay above the light: the settings window
+/// (when the user asked for it) and, topmost, the tray panel.
+fn raise_above_overlays(app: &AppHandle, settings_on_top: bool) {
+    let settings = app
+        .get_webview_window("settings")
+        .filter(|_| settings_on_top);
+    let panel = app.get_webview_window(flyout::LABEL);
+    for w in [settings, panel].into_iter().flatten() {
+        if w.is_visible().unwrap_or(false) {
+            win::raise(&w);
+        }
     }
 }
 
@@ -104,12 +118,18 @@ fn create(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindow> {
         .visible(false)
         .build()?;
     w.set_ignore_cursor_events(true)?;
-    win::enforce(&w, true);
+    win::enforce(&w);
     Ok(w)
 }
 
-fn place(w: &WebviewWindow, m: &Monitor) {
-    let (pos, size) = (*m.position(), *m.size());
+/// Covers the whole monitor, or only its work area (everything but the
+/// taskbar) when `avoid_taskbar` is set.
+fn place(w: &WebviewWindow, m: &Monitor, avoid_taskbar: bool) {
+    let (pos, size) = if avoid_taskbar {
+        (m.work_area().position, m.work_area().size)
+    } else {
+        (*m.position(), *m.size())
+    };
     if w.outer_position().ok() != Some(pos) {
         let _ = w.set_position(pos);
     }

@@ -12,7 +12,7 @@ mod imp {
         w.hwnd().ok().map(|h| h.0 as HWND)
     }
 
-    fn set_topmost(h: HWND, flags: SET_WINDOW_POS_FLAGS) {
+    fn set_topmost(h: HWND) {
         unsafe {
             SetWindowPos(
                 h,
@@ -21,16 +21,17 @@ mod imp {
                 0,
                 0,
                 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | flags,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER,
             );
         }
     }
 
-    /// Makes the overlay click-through, never focused and hidden from Alt+Tab.
-    /// With `raise`, also moves it above other always-on-top windows. tao
-    /// rewrites GWL_EXSTYLE whenever its own flags change, so this is
-    /// reapplied periodically.
-    pub fn enforce(w: &WebviewWindow, raise: bool) {
+    /// Makes the overlay click-through, never focused and hidden from Alt+Tab,
+    /// and moves it above other always-on-top windows. tao rewrites
+    /// GWL_EXSTYLE whenever its own flags change, so this is reapplied
+    /// periodically. Runs on the main thread, which owns the overlays, so the
+    /// z-order change is synchronous and callers can stack windows above it.
+    pub fn enforce(w: &WebviewWindow) {
         let Some(h) = hwnd(w) else { return };
         unsafe {
             let ex = GetWindowLongPtrW(h, GWL_EXSTYLE) as u32;
@@ -40,22 +41,24 @@ mod imp {
                 SetWindowLongPtrW(h, GWL_EXSTYLE, want as isize);
             }
         }
-        if raise {
-            set_topmost(h, SWP_ASYNCWINDOWPOS);
-        }
+        set_topmost(h);
     }
 
     /// Puts a window at the very top of the always-on-top band.
     pub fn raise(w: &WebviewWindow) {
         if let Some(h) = hwnd(w) {
-            set_topmost(h, 0);
+            set_topmost(h);
         }
     }
 
-    pub fn show(w: &WebviewWindow, raise: bool) {
-        enforce(w, raise);
+    pub fn show(w: &WebviewWindow) {
+        enforce(w);
         if let Some(h) = hwnd(w) {
-            unsafe { ShowWindowAsync(h, SW_SHOWNOACTIVATE) };
+            unsafe {
+                if IsWindowVisible(h) == 0 {
+                    ShowWindowAsync(h, SW_SHOWNOACTIVATE);
+                }
+            }
         }
     }
 
@@ -74,16 +77,14 @@ mod imp {
 mod imp {
     use super::WebviewWindow;
 
-    pub fn enforce(w: &WebviewWindow, raise: bool) {
-        if raise {
-            let _ = w.set_always_on_top(true);
-        }
+    pub fn enforce(w: &WebviewWindow) {
+        let _ = w.set_always_on_top(true);
     }
     pub fn raise(w: &WebviewWindow) {
         let _ = w.set_always_on_top(true);
     }
-    pub fn show(w: &WebviewWindow, raise: bool) {
-        enforce(w, raise);
+    pub fn show(w: &WebviewWindow) {
+        enforce(w);
         let _ = w.show();
     }
     pub fn hide(w: &WebviewWindow) {

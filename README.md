@@ -40,6 +40,10 @@ interface is in English or Portuguese, following the Windows display language.
 
 - Light up the primary display, all displays or a specific one. The overlays follow
   displays being plugged in, unplugged or changing resolution.
+- **Leave the taskbar clear** (on by default): the light stops at the edge of the
+  taskbar, whichever side of the screen it's on.
+- **Keep the settings window on top** (on by default): the settings stay above the
+  light and other programs while you adjust them.
 
 ## Building
 
