@@ -60,6 +60,14 @@ pub fn sync(app: &AppHandle) {
         state.hide_generation.fetch_add(1, Ordering::SeqCst);
     }
 
+    // While the user works in the settings window (and asked for it), the
+    // light slides under that window instead of covering it. The window
+    // itself stays a regular one, so it never floats over other programs.
+    let settings = app.get_webview_window("settings");
+    let below = settings
+        .as_ref()
+        .filter(|w| s.settings_on_top && win::is_foreground(w));
+
     for (m, label) in targets.iter().zip(&wanted) {
         let w = match app.get_webview_window(label) {
             Some(w) => w,
@@ -74,28 +82,19 @@ pub fn sync(app: &AppHandle) {
         place(&w, m, s.avoid_taskbar);
         let _ = w.set_content_protected(s.hide_from_capture);
         if s.enabled {
-            win::show(&w);
+            win::show(&w, below);
         }
     }
 
     if s.enabled {
-        raise_above_overlays(app, s.settings_on_top);
+        // The tray panel is always on top, above the light.
+        if let Some(panel) = app.get_webview_window(flyout::LABEL) {
+            if panel.is_visible().unwrap_or(false) {
+                win::raise(&panel);
+            }
+        }
     } else {
         schedule_hide(app);
-    }
-}
-
-/// Stacks the windows that must stay above the light: the settings window
-/// (when the user asked for it) and, topmost, the tray panel.
-fn raise_above_overlays(app: &AppHandle, settings_on_top: bool) {
-    let settings = app
-        .get_webview_window("settings")
-        .filter(|_| settings_on_top);
-    let panel = app.get_webview_window(flyout::LABEL);
-    for w in [settings, panel].into_iter().flatten() {
-        if w.is_visible().unwrap_or(false) {
-            win::raise(&w);
-        }
     }
 }
 

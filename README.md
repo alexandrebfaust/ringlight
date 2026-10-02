@@ -42,8 +42,9 @@ interface is in English or Portuguese, following the Windows display language.
   displays being plugged in, unplugged or changing resolution.
 - **Leave the taskbar clear** (on by default): the light stops at the edge of the
   taskbar, whichever side of the screen it's on.
-- **Keep the settings window on top** (on by default): the settings stay above the
-  light and other programs while you adjust them.
+- **Keep the settings window above the light** (on by default): while you use the
+  settings window, the light goes behind it. The window never floats over other
+  programs.
 
 ## Building
 

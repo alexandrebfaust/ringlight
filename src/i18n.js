@@ -65,8 +65,8 @@ window.I18N = {
     lang_auto: "Automatic ({lang})",
     avoid_taskbar: "Leave the taskbar clear",
     avoid_taskbar_hint: "The light stops just above the taskbar",
-    settings_on_top: "Keep this window on top",
-    settings_on_top_hint: "Stays above the light and other programs",
+    settings_on_top: "Keep this window above the light",
+    settings_on_top_hint: "While you use it, the light goes behind this window",
 
     sec_automation: "Automation",
     hide_capture: "Hide when sharing the screen",
@@ -151,8 +151,8 @@ window.I18N = {
     lang_auto: "Automático ({lang})",
     avoid_taskbar: "Deixar a barra de tarefas livre",
     avoid_taskbar_hint: "A luz termina logo acima da barra de tarefas",
-    settings_on_top: "Manter esta janela no topo",
-    settings_on_top_hint: "Fica acima da luz e dos outros programas",
+    settings_on_top: "Manter esta janela acima da luz",
+    settings_on_top_hint: "Enquanto você usa esta janela, a luz passa por trás dela",
 
     sec_automation: "Automação",
     hide_capture: "Ocultar ao compartilhar a tela",

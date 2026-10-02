@@ -60,7 +60,8 @@ pub struct Settings {
     pub monitor: String,
     /// Keep the light inside the work area, so it never covers the taskbar.
     pub avoid_taskbar: bool,
-    /// Keep the settings window always on top, above the light.
+    /// While the settings window is in use, slide the light under it so it
+    /// doesn't cover the window. The window never floats over other programs.
     pub settings_on_top: bool,
     pub hide_from_capture: bool,
     pub auto_camera: bool,

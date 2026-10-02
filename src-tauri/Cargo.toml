@@ -1,6 +1,6 @@
 [package]
 name = "ringlight"
-version = "0.3.0"
+version = "0.3.1"
 description = "Screen ring light for video calls"
 edition = "2021"
 
