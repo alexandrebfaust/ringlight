@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Ringlight</title>
+  <style>
+    :root {
+      --c: #ffffff; /* cor */
+      --t: 60px;    /* espessura sólida + metade da suavidade */
+      --s: 60px;    /* suavidade (desfoque) */
+      --r: 24px;    /* raio dos cantos internos */
+    }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      pointer-events: none;
+    }
+    #ring {
+      position: fixed;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    /* O "buraco" transparente no meio; a sombra gigante pinta tudo ao redor
+       com a cor da luz, e o desfoque cria o degradê para dentro da tela. */
+    #hole {
+      position: absolute;
+      inset: var(--t);
+      border-radius: var(--r);
+      box-shadow: 0 0 var(--s) 200vmax var(--c);
+    }
+  </style>
+</head>
+<body>
+  <div id="ring"><div id="hole"></div></div>
+  <script>
+    const { invoke } = window.__TAURI__.core;
+    const { listen } = window.__TAURI__.event;
+    const ring = document.getElementById("ring");
+    const root = document.documentElement.style;
+
+    function apply(s) {
+      root.setProperty("--c", s.color);
+      root.setProperty("--t", s.thickness + s.softness / 2 + "px");
+      root.setProperty("--s", s.softness + "px");
+      root.setProperty("--r", s.radius + "px");
+      ring.style.opacity = s.enabled ? String(s.brightness / 100) : "0";
+    }
+
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+    listen("settings-changed", (e) => apply(e.payload));
+    // Espera um quadro para o fade-in inicial acontecer.
+    invoke("get_settings").then((s) => requestAnimationFrame(() => apply(s)));
+  </script>
+</body>
+</html>

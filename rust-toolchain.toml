@@ -1,0 +1,6 @@
+# Toolchain GNU: compila sem as ferramentas de C++ do Visual Studio (MSVC),
+# usando o MinGW do PATH para embutir ícone e manifesto no executável.
+# Para usar MSVC, troque por: channel = "1.90"
+[toolchain]
+channel = "1.90-x86_64-pc-windows-gnu"
+profile = "minimal"
