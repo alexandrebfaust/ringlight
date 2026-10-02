@@ -1,113 +1,185 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ringlight</title>
+  <link rel="stylesheet" href="ring.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="hero">
-    <div class="lamp off" id="lamp" aria-hidden="true"></div>
+    <div class="lamp off" id="lamp" aria-hidden="true">
+      <div class="lamp-glow">
+        <div class="lamp-shape" id="lampGlow"><div class="fx"><div class="spin"><div class="paint"></div></div></div></div>
+      </div>
+      <div class="lamp-shape" id="lampRing"><div class="fx"><div class="spin"><div class="paint"></div></div></div></div>
+    </div>
     <div class="hero-text">
       <h1>Ringlight</h1>
-      <p id="status">Desligada</p>
+      <p id="status"></p>
     </div>
-    <label class="switch big" title="Ligar ou desligar">
-      <input type="checkbox" id="enabled" aria-label="Ringlight ligada" />
+    <label class="switch big" data-i18n-title="toggle">
+      <input type="checkbox" id="enabled" data-i18n-aria="toggle" />
       <span></span>
     </label>
   </header>
 
   <main>
+    <!-- Color -->
     <section>
-      <h2>Cor</h2>
-      <div class="presets" id="presets"></div>
-
-      <div class="slider">
-        <div class="row">
-          <label for="kelvin">Temperatura</label>
-          <output id="kelvinOut"></output>
-        </div>
-        <input type="range" id="kelvin" class="temp" min="2000" max="9000" step="100" />
+      <h2 data-i18n="sec_color"></h2>
+      <div class="seg" id="colorMode" role="radiogroup">
+        <button type="button" role="radio" data-value="solid" data-i18n="mode_solid"></button>
+        <button type="button" role="radio" data-value="linear" data-i18n="mode_linear"></button>
+        <button type="button" role="radio" data-value="conic" data-i18n="mode_conic"></button>
+        <button type="button" role="radio" data-value="sides" data-i18n="mode_sides"></button>
       </div>
 
-      <div class="row custom">
-        <label for="color">Cor personalizada</label>
-        <div class="color-pick">
-          <code id="colorHex"></code>
-          <input type="color" id="color" />
+      <div class="panel" data-panel="solid">
+        <div class="presets" id="kelvinPresets"></div>
+        <div class="slider">
+          <div class="row">
+            <label for="kelvin" data-i18n="temperature"></label>
+            <output id="kelvinOut"></output>
+          </div>
+          <input type="range" id="kelvin" class="temp" min="2000" max="9000" step="100" />
         </div>
+        <div class="row custom">
+          <label for="color" data-i18n="custom_color"></label>
+          <div class="color-pick">
+            <code id="colorHex"></code>
+            <input type="color" id="color" />
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="linear conic">
+        <div class="gradients" id="gradientPresets"></div>
+        <div class="field">
+          <span class="label" data-i18n="colors"></span>
+          <div class="stops" id="stops"></div>
+        </div>
+        <div class="field" data-panel="linear">
+          <span class="label" data-i18n="direction"></span>
+          <div class="arrows" id="arrows"></div>
+        </div>
+        <div class="slider">
+          <div class="row">
+            <label for="angle" id="angleLabel"></label>
+            <output data-for="angle"></output>
+          </div>
+          <input type="range" id="angle" min="0" max="359" step="1" data-unit="°" />
+        </div>
+      </div>
+
+      <div class="panel" data-panel="sides">
+        <div class="sides" id="sides"></div>
       </div>
     </section>
 
+    <!-- Effect -->
     <section>
-      <h2>Luz</h2>
+      <h2 data-i18n="sec_effect"></h2>
+      <div class="seg" id="effect" role="radiogroup">
+        <button type="button" role="radio" data-value="none" data-i18n="effect_none"></button>
+        <button type="button" role="radio" data-value="rotate" data-i18n="effect_rotate"></button>
+        <button type="button" role="radio" data-value="pulse" data-i18n="effect_pulse"></button>
+        <button type="button" role="radio" data-value="hue" data-i18n="effect_hue"></button>
+      </div>
+      <div class="slider" id="speedRow">
+        <div class="row">
+          <label for="speed" data-i18n="speed"></label>
+          <output data-for="speed"></output>
+        </div>
+        <input type="range" id="speed" min="1" max="10" step="1" data-unit="" />
+      </div>
+      <p class="hint" id="effectHint" hidden></p>
+    </section>
+
+    <!-- Light -->
+    <section>
+      <h2 data-i18n="sec_light"></h2>
       <div class="slider">
-        <div class="row"><label for="brightness">Brilho</label><output data-for="brightness"></output></div>
-        <input type="range" id="brightness" min="5" max="100" step="1" data-unit="%" />
+        <div class="row"><label for="opacity" data-i18n="opacity"></label><output data-for="opacity"></output></div>
+        <input type="range" id="opacity" min="5" max="100" step="1" data-unit="%" />
+        <small data-i18n="opacity_hint"></small>
       </div>
       <div class="slider">
-        <div class="row"><label for="thickness">Espessura</label><output data-for="thickness"></output></div>
+        <div class="row"><label for="intensity" data-i18n="intensity"></label><output data-for="intensity"></output></div>
+        <input type="range" id="intensity" min="10" max="100" step="1" data-unit="%" />
+        <small data-i18n="intensity_hint"></small>
+      </div>
+      <div class="slider">
+        <div class="row"><label for="thickness" data-i18n="thickness"></label><output data-for="thickness"></output></div>
         <input type="range" id="thickness" min="4" max="300" step="1" data-unit=" px" />
       </div>
       <div class="slider">
-        <div class="row"><label for="softness">Suavidade</label><output data-for="softness"></output></div>
+        <div class="row"><label for="softness" data-i18n="softness"></label><output data-for="softness"></output></div>
         <input type="range" id="softness" min="0" max="200" step="1" data-unit=" px" />
       </div>
       <div class="slider">
-        <div class="row"><label for="radius">Cantos arredondados</label><output data-for="radius"></output></div>
+        <div class="row"><label for="radius" data-i18n="radius"></label><output data-for="radius"></output></div>
         <input type="range" id="radius" min="0" max="300" step="1" data-unit=" px" />
       </div>
     </section>
 
+    <!-- General -->
     <section>
-      <h2>Tela</h2>
-      <div class="row">
-        <label for="monitor">Monitor</label>
+      <h2 data-i18n="sec_general"></h2>
+      <div class="row field">
+        <label for="monitor" data-i18n="monitor"></label>
         <select id="monitor"></select>
+      </div>
+      <div class="row field">
+        <label for="language" data-i18n="language"></label>
+        <select id="language"></select>
       </div>
     </section>
 
+    <!-- Automation -->
     <section>
-      <h2>Automação</h2>
+      <h2 data-i18n="sec_automation"></h2>
       <div class="option">
         <div>
-          <label for="hideFromCapture">Ocultar ao compartilhar a tela</label>
-          <small>Não aparece no Teams, Meet, Zoom, OBS e prints</small>
+          <label for="hideFromCapture" data-i18n="hide_capture"></label>
+          <small data-i18n="hide_capture_hint"></small>
         </div>
         <label class="switch"><input type="checkbox" id="hideFromCapture" /><span></span></label>
       </div>
       <div class="option">
         <div>
-          <label for="autoCamera">Ligar junto com a câmera</label>
-          <small>Acende quando um app usa a webcam e apaga quando ela desliga</small>
+          <label for="autoCamera" data-i18n="auto_camera"></label>
+          <small data-i18n="auto_camera_hint"></small>
         </div>
         <label class="switch"><input type="checkbox" id="autoCamera" /><span></span></label>
       </div>
       <div class="option">
         <div>
-          <span>Atalho para ligar/desligar</span>
-          <small>Clique e pressione a combinação de teclas</small>
+          <span data-i18n="hotkey"></span>
+          <small data-i18n="hotkey_hint"></small>
         </div>
         <div class="hotkey-wrap">
           <button type="button" class="hotkey" id="hotkey"></button>
-          <button type="button" class="icon-btn" id="hotkeyClear" title="Remover atalho" aria-label="Remover atalho">×</button>
+          <button type="button" class="icon-btn" id="hotkeyClear" data-i18n-title="hotkey_clear" data-i18n-aria="hotkey_clear">×</button>
         </div>
       </div>
       <div class="option">
         <div>
-          <label for="autostart">Iniciar com o Windows</label>
-          <small>Abre na bandeja, com a luz apagada</small>
+          <label for="autostart" data-i18n="autostart"></label>
+          <small data-i18n="autostart_hint"></small>
         </div>
         <label class="switch"><input type="checkbox" id="autostart" /><span></span></label>
       </div>
     </section>
   </main>
 
-  <footer>Fechar esta janela mantém a ringlight rodando na bandeja do sistema.</footer>
+  <footer><span data-i18n="footer"></span> <span id="version"></span></footer>
   <div class="toast" id="toast" role="alert" hidden></div>
 
+  <script src="i18n.js"></script>
+  <script src="common.js"></script>
+  <script src="paint.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

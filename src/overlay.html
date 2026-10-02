@@ -1,15 +1,10 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Ringlight</title>
+  <link rel="stylesheet" href="ring.css" />
   <style>
-    :root {
-      --c: #ffffff; /* cor */
-      --t: 60px;    /* espessura sólida + metade da suavidade */
-      --s: 60px;    /* suavidade (desfoque) */
-      --r: 24px;    /* raio dos cantos internos */
-    }
     html, body {
       margin: 0;
       width: 100%;
@@ -19,41 +14,83 @@
       user-select: none;
       pointer-events: none;
     }
+    /* The ring's shape (band, rounded corners, inner fade) comes from an SVG
+       mask; whatever is painted inside .paint only shows through the band. */
     #ring {
       position: fixed;
       inset: 0;
+      overflow: hidden;
       opacity: 0;
       transition: opacity 0.3s ease;
-    }
-    /* O "buraco" transparente no meio; a sombra gigante pinta tudo ao redor
-       com a cor da luz, e o desfoque cria o degradê para dentro da tela. */
-    #hole {
-      position: absolute;
-      inset: var(--t);
-      border-radius: var(--r);
-      box-shadow: 0 0 var(--s) 200vmax var(--c);
+      mask-size: 100% 100%;
+      mask-repeat: no-repeat;
+      -webkit-mask-size: 100% 100%;
+      -webkit-mask-repeat: no-repeat;
     }
   </style>
 </head>
 <body>
-  <div id="ring"><div id="hole"></div></div>
+  <div id="ring"><div class="fx"><div class="spin"><div class="paint"></div></div></div></div>
+  <script src="paint.js"></script>
   <script>
     const { invoke } = window.__TAURI__.core;
     const { listen } = window.__TAURI__.event;
     const ring = document.getElementById("ring");
-    const root = document.documentElement.style;
+    const painter = new RingPaint(ring);
+    // Time for the fade-out before the effects stop.
+    const FADE_MS = 400;
+
+    let current = null;
+    let maskKey = "";
+    let stopTimer = 0;
+
+    /** Opaque everywhere except a rounded hole whose edge is blurred by `softness`. */
+    function maskUrl(w, h, { thickness, softness, radius }) {
+      const inset = thickness + softness / 2;
+      const hw = Math.max(0, w - 2 * inset);
+      const hh = Math.max(0, h - 2 * inset);
+      const r = Math.min(radius, hw / 2, hh / 2);
+      const blur = softness > 0
+        ? `<filter id="b" filterUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">` +
+          `<feGaussianBlur stdDeviation="${softness / 2}"/></filter>`
+        : "";
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+        `<defs>${blur}<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">` +
+        `<rect width="${w}" height="${h}" fill="#fff"/>` +
+        `<rect x="${inset}" y="${inset}" width="${hw}" height="${hh}" rx="${r}" fill="#000"` +
+        `${softness > 0 ? ' filter="url(#b)"' : ""}/></mask></defs>` +
+        `<rect width="${w}" height="${h}" fill="#fff" mask="url(#m)"/></svg>`;
+      return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    }
 
     function apply(s) {
-      root.setProperty("--c", s.color);
-      root.setProperty("--t", s.thickness + s.softness / 2 + "px");
-      root.setProperty("--s", s.softness + "px");
-      root.setProperty("--r", s.radius + "px");
-      ring.style.opacity = s.enabled ? String(s.brightness / 100) : "0";
+      current = s;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      const key = [w, h, s.thickness, s.softness, s.radius].join("|");
+      if (key !== maskKey) {
+        maskKey = key;
+        const url = maskUrl(w, h, s);
+        ring.style.maskImage = url;
+        ring.style.webkitMaskImage = url;
+      }
+
+      ring.style.opacity = s.enabled ? String(s.opacity / 100) : "0";
+      clearTimeout(stopTimer);
+      // Effects keep running through the fade-out and then stop, so a hidden
+      // overlay doesn't keep animating.
+      painter.update(s, w, h, true);
+      if (!s.enabled) {
+        stopTimer = setTimeout(() => painter.update(current, w, h, false), FADE_MS);
+      }
     }
 
     document.addEventListener("contextmenu", (e) => e.preventDefault());
+    window.addEventListener("resize", () => current && apply(current));
     listen("settings-changed", (e) => apply(e.payload));
-    // Espera um quadro para o fade-in inicial acontecer.
+    // Wait one frame so the first fade-in actually animates.
     invoke("get_settings").then((s) => requestAnimationFrame(() => apply(s)));
   </script>
 </body>

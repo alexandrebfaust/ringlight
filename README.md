@@ -1,73 +1,105 @@
 # Ringlight
 
-Uma ringlight de tela para reuniões: acende uma faixa de luz no contorno do monitor
-para iluminar seu rosto na webcam. A faixa fica sempre por cima de tudo, mas os
-cliques passam por ela; você continua usando o computador normalmente.
+A screen ring light for video calls: it lights up a band around the edge of your
+monitor to light your face on camera. The band always stays on top, but clicks go
+straight through it, so you keep using your computer normally.
 
-Feita com [Tauri 2](https://tauri.app) (Rust + HTML). Por enquanto roda só no Windows.
+Built with [Tauri 2](https://tauri.app) (Rust + HTML). Windows only for now. The
+interface is in English or Portuguese, following the Windows display language.
 
-## Recursos
+## Features
 
-- **Cor**: predefinições de temperatura (2700 K a 6500 K), slider de 2000 K a 9000 K ou qualquer cor personalizada
-- **Brilho, espessura, suavidade** (degradê para dentro da tela) e **cantos arredondados**
-- **Monitor**: principal, todos ou um específico; a sobreposição se ajusta quando você conecta, desconecta ou muda a resolução
-- **Ocultar ao compartilhar a tela**: usa `WDA_EXCLUDEFROMCAPTURE`, então a luz não aparece para quem vê seu compartilhamento (Teams, Meet, Zoom, OBS, prints)
-- **Ligar junto com a câmera**: acende quando algum app começa a usar a webcam e apaga quando ela desliga (só se foi a câmera que acendeu)
-- **Atalho global** (padrão `Ctrl + Alt + L`) para ligar e desligar de qualquer lugar
-- **Iniciar com o Windows**: abre na bandeja, com a luz apagada
-- **Ícone na bandeja** desenhado com a cor atual da luz. Clique para abrir as configurações; clique com o botão direito para ligar, desligar ou sair
+**Light**
 
-## Rodando
+- **Colors**:
+  - **Solid**: temperature presets (2700 K to 6500 K), a 2000–9000 K slider or any color.
+  - **Gradient**: 2–5 colors across the screen, at any angle.
+  - **Conic**: colors that sweep around the screen.
+  - **Per side**: a color for each side, each side on or off. Useful for a key and fill light setup.
+- **Effects**: rotate, pulse or color cycle, with adjustable speed. They stop while the light is off.
+- **Opacity** makes the band see-through. **Intensity** dims the color while the band stays solid.
+- **Thickness**, **softness** (fade toward the center) and **rounded corners**.
 
-Pré-requisitos:
+**Tray**
+
+- **Quick panel**: one click on the tray icon opens a small panel with an intensity dial,
+  temperature presets, a temperature bar, the camera toggle and the on/off switch.
+- **Double-click** opens the full settings. **Right-click** opens the menu.
+- The tray icon is drawn with the current light colors.
+
+**Automation**
+
+- **Hide when sharing the screen**: the light uses `WDA_EXCLUDEFROMCAPTURE`, so it
+  doesn't show up in Teams, Meet, Zoom, OBS or screenshots.
+- **Turn on with the camera**: lights up when an app starts using the webcam and turns
+  off when it stops (only if the camera was what turned it on).
+- **Global shortcut**, `Ctrl + Alt + L` by default.
+- **Start with Windows**: opens in the tray with the light off.
+
+**Displays**
+
+- Light up the primary display, all displays or a specific one. The overlays follow
+  displays being plugged in, unplugged or changing resolution.
+
+## Building
+
+Requirements:
 
 - Node.js
-- Rust via rustup. O `rust-toolchain.toml` fixa o toolchain **1.90 GNU**
-  (`x86_64-pc-windows-gnu`), que não precisa das ferramentas de C++ do Visual Studio.
-  Para instalar: `rustup toolchain install 1.90-x86_64-pc-windows-gnu`
-- MinGW-w64 no `PATH` (`windres` embute o ícone e o manifesto no `.exe`). Nesta
-  máquina ele está em `C:\ProgramData\mingw64\mingw64\bin`.
-- WebView2, que já vem no Windows 11
+- Rust via rustup. `rust-toolchain.toml` pins the **1.90 GNU** toolchain
+  (`x86_64-pc-windows-gnu`), which doesn't need the Visual Studio C++ tools:
+  `rustup toolchain install 1.90-x86_64-pc-windows-gnu`
+- MinGW-w64 on `PATH`. Its `windres` embeds the icon and manifest into the `.exe`.
+- WebView2, which ships with Windows 11.
 
-Para usar o MSVC, instale "Desenvolvimento para desktop com C++" no Visual Studio
-e troque o canal no `rust-toolchain.toml` para `"1.90"`.
+To build with MSVC instead, install "Desktop development with C++" in Visual Studio
+and set the channel in `rust-toolchain.toml` to `"1.90"`.
 
 ```bash
 npm install
-npm run dev      # modo de desenvolvimento
-npm run build    # gera o .exe e o instalador
+npm run dev      # development mode
+npm run build    # executable and installer
 ```
 
-Saída do build:
+Build output:
 
-- `src-tauri/target/release/ringlight.exe`: executável avulso
-- `src-tauri/target/release/bundle/nsis/Ringlight_0.1.0_x64-setup.exe`: instalador
+- `src-tauri/target/release/ringlight.exe`: standalone executable
+- `src-tauri/target/release/bundle/nsis/Ringlight_<version>_x64-setup.exe`: installer
 
-## Estrutura
+## Project layout
 
 ```
-src/                  interface (HTML/CSS/JS puro, sem bundler)
-  index.html, app.js  janela de configurações
-  overlay.html        a faixa de luz desenhada em cada monitor
+src/                     UI (plain HTML/CSS/JS, no bundler)
+  index.html, app.js     full settings window
+  flyout.*               tray quick panel
+  overlay.html           the band drawn on each monitor
+  paint.js, ring.css     colors and effects, shared by the overlay and the previews
+  common.js, i18n.js     shared helpers and the UI strings (en, pt)
 src-tauri/src/
-  lib.rs              estado, comandos, bandeja, atalho e tarefa de fundo
-  overlay.rs          cria e posiciona uma janela transparente por monitor
-  win.rs              ajustes Win32: clique atravessa, sem foco, fora do Alt+Tab, sempre no topo
-  camera.rs           detecta o uso da webcam pelo registro do Windows
-  tray.rs             ícone e menu da bandeja
-  settings.rs         configurações e persistência
+  lib.rs                 state, commands, global shortcut and background task
+  overlay.rs             one transparent window per monitor
+  flyout.rs              tray panel window and its placement
+  tray.rs                tray icon and menu
+  win.rs                 Win32 tweaks: click-through, no focus, hidden from Alt+Tab, always on top
+  camera.rs              webcam detection through the Windows registry
+  settings.rs            settings and persistence
+  i18n.rs                backend strings (tray, errors)
 ```
 
-As configurações ficam em `%APPDATA%\com.alexandre.ringlight\settings.json`.
+Settings live in `%APPDATA%\com.alexandre.ringlight\settings.json`.
 
-## Como funciona
+## How it works
 
-Cada monitor escolhido recebe uma janela do tamanho da tela, transparente, sem
-bordas e marcada com `WS_EX_TRANSPARENT | WS_EX_LAYERED` (o mouse atravessa),
-`WS_EX_NOACTIVATE` (nunca rouba o foco) e `WS_EX_TOOLWINDOW` (fora do Alt+Tab).
-A faixa é um "buraco" com `box-shadow` gigante: a sombra pinta tudo ao redor do
-buraco com a cor da luz, e o desfoque cria o degradê.
+Each selected monitor gets a borderless, transparent window the size of the screen,
+marked `WS_EX_TRANSPARENT | WS_EX_LAYERED` (clicks pass through), `WS_EX_NOACTIVATE`
+(never takes focus) and `WS_EX_TOOLWINDOW` (hidden from Alt+Tab).
 
-Uma tarefa de fundo roda a cada segundo. Ela coloca a sobreposição de volta acima
-de outras janelas "sempre no topo" (a barra de tarefas, por exemplo), confere a
-posição nos monitores, acompanha a câmera e salva as configurações.
+The band's shape (thickness, rounded corners and the soft inner edge) is an SVG mask
+on that window, so anything painted underneath only shows through the band: a solid
+color, a linear or conic CSS gradient, or one conic gradient split along the screen's
+diagonals for per-side colors. Effects use the Web Animations API, mostly on composited
+properties (transform, opacity, filter).
+
+A background task runs every second. It keeps the overlays above other always-on-top
+windows (such as the taskbar), keeps them in position across monitor changes, follows
+the camera and saves the settings.

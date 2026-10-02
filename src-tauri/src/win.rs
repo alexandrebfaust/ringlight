@@ -1,4 +1,4 @@
-//! Ajustes Win32 que o Tauri não expõe para as janelas de sobreposição.
+//! Win32 tweaks for the overlay windows that Tauri doesn't expose.
 
 use tauri::WebviewWindow;
 
@@ -12,11 +12,25 @@ mod imp {
         w.hwnd().ok().map(|h| h.0 as HWND)
     }
 
-    /// Garante que a sobreposição deixe os cliques passarem, não receba foco,
-    /// não apareça no Alt+Tab e fique acima das outras janelas "sempre no topo".
-    /// O tao reescreve GWL_EXSTYLE quando muda os próprios flags, então isto é
-    /// reaplicado periodicamente.
-    pub fn enforce(w: &WebviewWindow) {
+    fn set_topmost(h: HWND, flags: SET_WINDOW_POS_FLAGS) {
+        unsafe {
+            SetWindowPos(
+                h,
+                HWND_TOPMOST,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | flags,
+            );
+        }
+    }
+
+    /// Makes the overlay click-through, never focused and hidden from Alt+Tab.
+    /// With `raise`, also moves it above other always-on-top windows. tao
+    /// rewrites GWL_EXSTYLE whenever its own flags change, so this is
+    /// reapplied periodically.
+    pub fn enforce(w: &WebviewWindow, raise: bool) {
         let Some(h) = hwnd(w) else { return };
         unsafe {
             let ex = GetWindowLongPtrW(h, GWL_EXSTYLE) as u32;
@@ -25,20 +39,21 @@ mod imp {
             if want != ex {
                 SetWindowLongPtrW(h, GWL_EXSTYLE, want as isize);
             }
-            SetWindowPos(
-                h,
-                HWND_TOPMOST,
-                0,
-                0,
-                0,
-                0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_ASYNCWINDOWPOS,
-            );
+        }
+        if raise {
+            set_topmost(h, SWP_ASYNCWINDOWPOS);
         }
     }
 
-    pub fn show(w: &WebviewWindow) {
-        enforce(w);
+    /// Puts a window at the very top of the always-on-top band.
+    pub fn raise(w: &WebviewWindow) {
+        if let Some(h) = hwnd(w) {
+            set_topmost(h, 0);
+        }
+    }
+
+    pub fn show(w: &WebviewWindow, raise: bool) {
+        enforce(w, raise);
         if let Some(h) = hwnd(w) {
             unsafe { ShowWindowAsync(h, SW_SHOWNOACTIVATE) };
         }
@@ -59,10 +74,16 @@ mod imp {
 mod imp {
     use super::WebviewWindow;
 
-    pub fn enforce(w: &WebviewWindow) {
+    pub fn enforce(w: &WebviewWindow, raise: bool) {
+        if raise {
+            let _ = w.set_always_on_top(true);
+        }
+    }
+    pub fn raise(w: &WebviewWindow) {
         let _ = w.set_always_on_top(true);
     }
-    pub fn show(w: &WebviewWindow) {
+    pub fn show(w: &WebviewWindow, raise: bool) {
+        enforce(w, raise);
         let _ = w.show();
     }
     pub fn hide(w: &WebviewWindow) {

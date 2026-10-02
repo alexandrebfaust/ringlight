@@ -1,4 +1,6 @@
 mod camera;
+mod flyout;
+mod i18n;
 mod overlay;
 mod settings;
 mod tray;
@@ -13,30 +15,36 @@ use std::{
         Mutex,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
-use tauri::{menu::CheckMenuItem, AppHandle, Emitter, Manager, RunEvent, WindowEvent, Wry};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as _};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-/// Argumento usado pela inicialização automática para abrir só na bandeja.
+/// Argument passed by start-with-Windows so the app opens in the tray only.
 const HIDDEN_ARG: &str = "--hidden";
 
 pub struct AppState {
     pub settings: Mutex<Settings>,
     config_path: PathBuf,
     dirty: AtomicBool,
-    /// A luz foi acesa pela câmera e deve apagar quando a câmera desligar.
+    /// The camera turned the light on, so it should turn it off again.
     camera_turned_on: AtomicBool,
     pub hide_generation: AtomicU64,
-    pub tray_toggle: Mutex<Option<CheckMenuItem<Wry>>>,
+    pub tray_items: Mutex<Option<tray::TrayItems>>,
+    /// When the tray panel was last hidden (see `flyout::REOPEN_GUARD`).
+    pub flyout_hidden_at: Mutex<Option<Instant>>,
 }
 
 fn current(app: &AppHandle) -> Settings {
     app.state::<AppState>().settings.lock().unwrap().clone()
 }
 
-/// Propaga uma mudança de configuração para sobreposições, bandeja, janelas e disco.
+fn text(app: &AppHandle) -> &'static i18n::Text {
+    i18n::resolve(&current(app).language).text()
+}
+
+/// Propagates a settings change to the overlays, tray, windows and disk.
 fn changed(app: &AppHandle) {
     app.state::<AppState>().dirty.store(true, Ordering::SeqCst);
     overlay::request_sync(app);
@@ -49,7 +57,7 @@ fn set_enabled_internal(app: &AppHandle, on: bool) {
     changed(app);
 }
 
-/// Liga/desliga por ação do usuário (bandeja ou atalho).
+/// Turns the light on/off on user request (tray or shortcut).
 pub fn toggle(app: &AppHandle) {
     let state = app.state::<AppState>();
     state.camera_turned_on.store(false, Ordering::SeqCst);
@@ -58,6 +66,7 @@ pub fn toggle(app: &AppHandle) {
 }
 
 pub fn show_settings(app: &AppHandle) {
+    flyout::hide(app);
     if let Some(w) = app.get_webview_window("settings") {
         let _ = w.unminimize();
         let _ = w.show();
@@ -75,17 +84,18 @@ fn save_now(app: &AppHandle) {
     state.dirty.store(false, Ordering::SeqCst);
     let s = state.settings.lock().unwrap().clone();
     if let Err(e) = settings::save(&state.config_path, &s) {
-        eprintln!("não foi possível salvar as configurações: {e}");
+        eprintln!("couldn't save settings: {e}");
     }
 }
 
 fn register_hotkey(app: &AppHandle, old: &str, new: &str) -> Result<(), String> {
+    let text = text(app);
     let shortcut = if new.is_empty() {
         None
     } else {
         Some(
             new.parse::<Shortcut>()
-                .map_err(|_| format!("\"{new}\" não é um atalho válido."))?,
+                .map_err(|_| text.hotkey_invalid.replace("{}", new))?,
         )
     };
     let gs = app.global_shortcut();
@@ -99,18 +109,47 @@ fn register_hotkey(app: &AppHandle, old: &str, new: &str) -> Result<(), String> 
         if !old.is_empty() {
             let _ = gs.register(old);
         }
-        "Esse atalho já está em uso por outro programa. Escolha outra combinação.".to_string()
+        text.hotkey_in_use.to_string()
     })
 }
 
-// ---------------------------------------------------------------- comandos
+// ---------------------------------------------------------------- commands
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AppInfo {
+    version: String,
+    /// Language detected from Windows, used when the setting is "auto".
+    system_language: &'static str,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct MonitorInfo {
     id: String,
-    label: String,
+    /// Windows display number (the N in `\\.\DISPLAYN`).
+    number: String,
+    width: u32,
+    height: u32,
     primary: bool,
+}
+
+#[tauri::command]
+async fn app_info(app: AppHandle) -> AppInfo {
+    AppInfo {
+        version: app.package_info().version.to_string(),
+        system_language: i18n::system().code(),
+    }
+}
+
+#[tauri::command]
+async fn open_settings(app: AppHandle) {
+    show_settings(&app);
+}
+
+#[tauri::command]
+async fn hide_flyout(app: AppHandle) {
+    flyout::hide(&app);
 }
 
 #[tauri::command]
@@ -132,25 +171,21 @@ async fn list_monitors(app: AppHandle) -> Vec<MonitorInfo> {
         .filter_map(|(i, m)| {
             let id = m.name()?.clone();
             let digits: String = id.chars().filter(char::is_ascii_digit).collect();
-            let number = if digits.is_empty() { (i + 1).to_string() } else { digits };
-            let is_primary = primary.as_deref() == Some(id.as_str());
             let size = m.size();
             Some(MonitorInfo {
-                label: format!(
-                    "Tela {number} · {}×{}{}",
-                    size.width,
-                    size.height,
-                    if is_primary { " (principal)" } else { "" }
-                ),
+                number: if digits.is_empty() { (i + 1).to_string() } else { digits },
+                width: size.width,
+                height: size.height,
+                primary: primary.as_deref() == Some(id.as_str()),
                 id,
-                primary: is_primary,
             })
         })
         .collect()
 }
 
-/// Atualiza aparência, monitor e automações. `enabled`, `hotkey` e `autostart`
-/// têm comandos próprios porque podem falhar ou mudar fora desta janela.
+/// Updates appearance, display, language and automations. `enabled`, `hotkey`
+/// and `autostart` have their own commands because they can fail or change
+/// outside the settings window.
 #[tauri::command]
 async fn update_settings(app: AppHandle, settings: Settings) -> Settings {
     let mut next = settings;
@@ -194,17 +229,17 @@ async fn set_autostart(app: AppHandle, enabled: bool) -> Result<Settings, String
     let launcher = app.autolaunch();
     if launcher.is_enabled().unwrap_or(!enabled) != enabled {
         let result = if enabled { launcher.enable() } else { launcher.disable() };
-        result.map_err(|e| format!("Não foi possível alterar a inicialização automática: {e}"))?;
+        result.map_err(|e| text(&app).autostart_failed.replace("{}", &e.to_string()))?;
     }
     app.state::<AppState>().settings.lock().unwrap().autostart = enabled;
     changed(&app);
     Ok(current(&app))
 }
 
-// ------------------------------------------------------- tarefa de fundo
+// ---------------------------------------------------------- background task
 
-/// A cada segundo: acompanha a câmera, mantém as sobreposições no lugar
-/// (monitores trocados, DPI, outras janelas "sempre no topo") e salva no disco.
+/// Every second: follows the camera, keeps the overlays in place (monitor
+/// changes, DPI, other always-on-top windows) and saves settings to disk.
 fn background(app: AppHandle) {
     let mut camera_was = camera::in_use();
     loop {
@@ -235,14 +270,14 @@ fn background(app: AppHandle) {
     }
 }
 
-// ------------------------------------------------------------------- app
+// --------------------------------------------------------------------- app
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let hidden = std::env::args().any(|a| a == HIDDEN_ARG);
 
     let app = tauri::Builder::default()
-        // Precisa ser o primeiro plugin: uma segunda instância só abre as configurações.
+        // Must be the first plugin: a second instance just opens the settings.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_settings(app)
         }))
@@ -275,13 +310,15 @@ pub fn run() {
                 dirty: AtomicBool::new(first_run),
                 camera_turned_on: AtomicBool::new(false),
                 hide_generation: AtomicU64::new(0),
-                tray_toggle: Mutex::new(None),
+                tray_items: Mutex::new(None),
+                flyout_hidden_at: Mutex::new(None),
             });
 
             if let Err(e) = register_hotkey(&handle, "", &hotkey) {
                 eprintln!("{e}");
             }
             tray::create(&handle)?;
+            flyout::create(&handle)?;
             overlay::sync(&handle);
             if !hidden {
                 show_settings(&handle);
@@ -289,16 +326,24 @@ pub fn run() {
             thread::spawn(move || background(handle));
             Ok(())
         })
-        .on_window_event(|window, event| {
-            // Fechar as configurações só esconde a janela; o app continua na bandeja.
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "settings" {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
+        .on_window_event(|window, event| match (window.label(), event) {
+            // Closing the settings only hides the window; the app stays in the tray.
+            ("settings", WindowEvent::CloseRequested { api, .. }) => {
+                api.prevent_close();
+                let _ = window.hide();
             }
+            // The tray panel closes like a Windows flyout: as soon as it loses focus.
+            (flyout::LABEL, WindowEvent::CloseRequested { api, .. }) => {
+                api.prevent_close();
+                flyout::hide(window.app_handle());
+            }
+            (flyout::LABEL, WindowEvent::Focused(false)) => flyout::hide(window.app_handle()),
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
+            app_info,
+            open_settings,
+            hide_flyout,
             get_settings,
             list_monitors,
             update_settings,
@@ -307,10 +352,10 @@ pub fn run() {
             set_autostart
         ])
         .build(tauri::generate_context!())
-        .expect("erro ao iniciar o Ringlight");
+        .expect("error while starting Ringlight");
 
     app.run(|_app, event| {
-        // Sem janelas visíveis o app continua vivo na bandeja; só sai pelo menu.
+        // With no visible window the app keeps running in the tray; only the menu quits.
         if let RunEvent::ExitRequested { api, code, .. } = event {
             if code.is_none() {
                 api.prevent_exit();

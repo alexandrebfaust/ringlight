@@ -1,9 +1,9 @@
-//! Detecta se algum app está usando a webcam.
+//! Detects whether any app is using the webcam.
 //!
-//! O Windows registra cada uso da câmera em
-//! `HKCU\...\CapabilityAccessManager\ConsentStore\webcam`: apps empacotados
-//! ficam direto nessa chave e os demais em `NonPackaged\<caminho do exe>`.
-//! Enquanto a câmera está em uso, `LastUsedTimeStop` vale 0.
+//! Windows records every camera use under
+//! `HKCU\...\CapabilityAccessManager\ConsentStore\webcam`: packaged apps sit
+//! directly under that key and the rest under `NonPackaged\<exe path>`.
+//! While the camera is in use, `LastUsedTimeStop` is 0.
 
 #[cfg(windows)]
 pub fn in_use() -> bool {

@@ -1,11 +1,11 @@
-//! Janelas transparentes que desenham a ringlight na borda de cada monitor.
+//! Transparent windows that draw the ring light around the edge of each monitor.
 
-use crate::{win, AppState};
+use crate::{flyout, win, AppState};
 use std::{sync::atomic::Ordering, thread, time::Duration};
 use tauri::{AppHandle, Manager, Monitor, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 const PREFIX: &str = "overlay-";
-/// Tempo do fade-out em overlay.html antes de esconder a janela.
+/// Fade-out time in overlay.html before the window is hidden.
 const FADE: Duration = Duration::from_millis(350);
 
 fn label_for(m: &Monitor) -> String {
@@ -35,14 +35,14 @@ fn targets(app: &AppHandle, monitor: &str) -> Vec<Monitor> {
         "primary" => primary().into_iter().collect(),
         name => match all.iter().find(|m| m.name().is_some_and(|n| n == name)) {
             Some(m) => vec![m.clone()],
-            // Monitor desconectado: cai para o principal.
+            // Monitor unplugged: fall back to the primary one.
             None => primary().into_iter().collect(),
         },
     }
 }
 
-/// Cria, reposiciona, mostra ou esconde as sobreposições conforme as configurações.
-/// Tem que rodar na thread principal; de outras threads use [`request_sync`].
+/// Creates, repositions, shows or hides the overlays to match the settings.
+/// Must run on the main thread; from other threads use [`request_sync`].
 pub fn sync(app: &AppHandle) {
     let state = app.state::<AppState>();
     let s = state.settings.lock().unwrap().clone();
@@ -56,17 +56,19 @@ pub fn sync(app: &AppHandle) {
     }
 
     if s.enabled {
-        // Cancela um esconder pendente de um desligar logo antes.
+        // Cancels a pending hide from a turn-off just before.
         state.hide_generation.fetch_add(1, Ordering::SeqCst);
     }
 
+    // While the tray panel is open it stays on top; the overlays wait.
+    let raise = !flyout::is_visible(app);
     for (m, label) in targets.iter().zip(&wanted) {
         let w = match app.get_webview_window(label) {
             Some(w) => w,
             None => match create(app, label) {
                 Ok(w) => w,
                 Err(e) => {
-                    eprintln!("falha ao criar a sobreposição {label}: {e}");
+                    eprintln!("failed to create overlay {label}: {e}");
                     continue;
                 }
             },
@@ -74,7 +76,7 @@ pub fn sync(app: &AppHandle) {
         place(&w, m);
         let _ = w.set_content_protected(s.hide_from_capture);
         if s.enabled {
-            win::show(&w);
+            win::show(&w, raise);
         }
     }
 
@@ -102,7 +104,7 @@ fn create(app: &AppHandle, label: &str) -> tauri::Result<WebviewWindow> {
         .visible(false)
         .build()?;
     w.set_ignore_cursor_events(true)?;
-    win::enforce(&w);
+    win::enforce(&w, true);
     Ok(w)
 }
 
@@ -111,8 +113,8 @@ fn place(w: &WebviewWindow, m: &Monitor) {
     if w.outer_position().ok() != Some(pos) {
         let _ = w.set_position(pos);
     }
-    // Ao trocar de monitor com outro DPI o Windows redimensiona a janela,
-    // então o tamanho é conferido de novo depois da posição.
+    // Moving to a monitor with a different DPI makes Windows resize the window,
+    // so the size is checked again after the position.
     if w.inner_size().ok() != Some(size) {
         let _ = w.set_size(size);
     }

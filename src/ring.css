@@ -1,0 +1,24 @@
+/* Shared by overlay.html and the settings preview. Markup: root > .fx > .spin > .paint */
+
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.fx,
+.spin,
+.paint {
+  position: absolute;
+  inset: 0;
+}
+
+/* The conic gradient rotates by transform, so its layer is a square as wide as
+   the diagonal: it keeps the whole area covered at any angle. */
+[data-mode="conic"] > .fx > .spin {
+  inset: auto;
+  left: calc(50% - var(--d) / 2);
+  top: calc(50% - var(--d) / 2);
+  width: var(--d);
+  height: var(--d);
+}

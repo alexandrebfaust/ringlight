@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Ringlight",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "com.alexandre.ringlight",
   "build": {
     "frontendDist": "../src"
@@ -14,7 +14,7 @@
         "title": "Ringlight",
         "url": "index.html",
         "width": 460,
-        "height": 880,
+        "height": 900,
         "minWidth": 400,
         "minHeight": 520,
         "center": true,
@@ -37,7 +37,8 @@
     ],
     "windows": {
       "nsis": {
-        "languages": ["PortugueseBR"]
+        "languages": ["English", "PortugueseBR"],
+        "displayLanguageSelector": false
       }
     }
   }

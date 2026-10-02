@@ -1,13 +1,13 @@
 [package]
 name = "ringlight"
-version = "0.1.0"
-description = "Ringlight de tela para reuniões"
+version = "0.2.0"
+description = "Screen ring light for video calls"
 edition = "2021"
 
 [lib]
 name = "ringlight_lib"
-# Só rlib: staticlib/cdylib servem para mobile, e o cdylib estoura o limite
-# de símbolos exportados de DLL no toolchain GNU.
+# rlib only: staticlib/cdylib are for mobile targets, and the cdylib exceeds
+# the DLL exported-symbol limit on the GNU toolchain.
 crate-type = ["rlib"]
 
 [build-dependencies]
@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sys-locale = "0.3"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"

@@ -7,6 +7,7 @@
   --line: #e2e3e8;
   --track: #d7d8de;
   --accent: #c97a0a;
+  --on-accent: #ffffff;
   --focus: #c97a0a80;
   --danger: #c4322b;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
@@ -22,6 +23,7 @@
     --line: #2c2e36;
     --track: #363843;
     --accent: #f2a93b;
+    --on-accent: #1b1300;
     --focus: #f2a93b80;
     --danger: #e5554b;
   }
@@ -41,9 +43,11 @@ body {
   -webkit-user-select: none;
 }
 
-label, .option span { cursor: default; }
+label, .option span, .label { cursor: default; }
 
-/* ------------------------------------------------------------ cabeçalho */
+[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------- header */
 
 .hero {
   display: flex;
@@ -70,26 +74,48 @@ h1 {
   font-size: 13px;
 }
 
+/* Preview lamp: the same painter as the real ring, masked into a circle,
+   with a blurred copy behind it as the glow. */
 .lamp {
-  --c: #ffffff;
-  --a: 1;
+  position: relative;
   flex: none;
   width: 48px;
   height: 48px;
+}
+
+.lamp-glow {
+  position: absolute;
+  inset: 0;
+  filter: blur(7px);
+  opacity: 0.8;
+}
+
+.lamp-shape {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   border-radius: 50%;
-  border: 8px solid var(--c);
-  box-shadow:
-    0 0 calc(20px * var(--a)) color-mix(in srgb, var(--c) calc(var(--a) * 75%), transparent),
-    inset 0 0 calc(10px * var(--a)) color-mix(in srgb, var(--c) calc(var(--a) * 60%), transparent);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-mask: radial-gradient(circle closest-side, transparent 57%, #000 60%, #000 96%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 57%, #000 60%, #000 96%, transparent 100%);
 }
 
-.lamp.off {
-  border-color: var(--track);
-  box-shadow: none;
+/* Faint outline so white light stays visible on the light theme. */
+.lamp::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 14%, transparent);
+  pointer-events: none;
 }
 
-/* ------------------------------------------------------------- seções */
+.lamp.off .lamp-glow { display: none; }
+.lamp.off .paint {
+  background: var(--track) !important;
+  filter: none !important;
+}
+
+/* -------------------------------------------------------------- sections */
 
 section {
   margin-top: 12px;
@@ -115,24 +141,82 @@ h2 {
   gap: 12px;
 }
 
-.slider + .slider { margin-top: 12px; }
+.field + .field, .row.field + .row.field { margin-top: 12px; }
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.slider { margin-top: 12px; }
 .slider .row { margin-bottom: 4px; }
+.slider small, .option small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
 
 output {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-/* ------------------------------------------------------- predefinições */
+.hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* --------------------------------------------------- segmented control */
+
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.seg button {
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.seg button:hover:not(:disabled) { color: var(--text); }
+
+.seg button[aria-checked="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.seg button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.panel { margin-top: 14px; }
+
+/* ----------------------------------------------------- temperature presets */
 
 .presets {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
-  margin-bottom: 14px;
 }
 
-.presets button {
+.presets button, .gradients button {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -148,7 +232,7 @@ output {
   transition: border-color 0.15s, background 0.15s;
 }
 
-.presets button:hover { border-color: var(--muted); }
+.presets button:hover, .gradients button:hover { border-color: var(--muted); }
 
 .presets button i {
   width: 18px;
@@ -159,12 +243,12 @@ output {
 }
 
 .presets button small {
+  margin-top: -4px;
   color: var(--muted);
   font-size: 10px;
-  margin-top: -4px;
 }
 
-.presets button[aria-pressed="true"] {
+.presets button[aria-pressed="true"], .gradients button[aria-pressed="true"] {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
@@ -198,7 +282,115 @@ input[type="color"] {
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
 
-/* ---------------------------------------------------------- sliders */
+/* --------------------------------------------------------------- gradients */
+
+.gradients {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.gradients button { padding: 8px 6px 7px; }
+
+.gradients button i {
+  width: 100%;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--g);
+  box-shadow: inset 0 0 0 1px #00000026;
+}
+
+.stops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stop { position: relative; }
+
+.stop input[type="color"] {
+  width: 44px;
+  height: 32px;
+}
+
+.stop button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.stop:hover button, .stop button:focus-visible { opacity: 1; }
+.stop button:hover { color: var(--text); }
+
+.add-stop {
+  width: 44px;
+  height: 32px;
+  border: 1px dashed var(--muted);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.add-stop:hover { color: var(--text); border-color: var(--text); }
+
+.arrows {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+
+.arrows button {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.arrows button:hover { border-color: var(--muted); }
+.arrows button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------- per side */
+
+.sides {
+  display: grid;
+  gap: 8px;
+}
+
+.side {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.side.off label { color: var(--muted); }
+.side.off input[type="color"] { opacity: 0.35; }
+
+/* ---------------------------------------------------------------- sliders */
 
 input[type="range"] {
   -webkit-appearance: none;
@@ -242,7 +434,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 4px var(--focus);
 }
 
-/* ---------------------------------------------------------- opções */
+/* ---------------------------------------------------------------- options */
 
 .option {
   display: flex;
@@ -255,13 +447,6 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 .option:last-of-type { padding-bottom: 0; }
 .option + .option { border-top: 1px solid var(--line); }
 
-.option small {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
 select {
   max-width: 62%;
   padding: 6px 8px;
@@ -272,7 +457,7 @@ select {
   font: inherit;
 }
 
-/* ---------------------------------------------------------- switch */
+/* ----------------------------------------------------------------- switch */
 
 .switch {
   position: relative;
@@ -319,7 +504,7 @@ select {
 .switch.big span::after { width: 24px; height: 24px; }
 .switch.big input:checked + span::after { transform: translateX(24px); }
 
-/* ---------------------------------------------------------- atalho */
+/* ----------------------------------------------------------------- hotkey */
 
 .hotkey-wrap {
   display: flex;
@@ -345,7 +530,8 @@ select {
   border-color: var(--accent);
   color: var(--accent);
 }
-.hotkey:focus-visible, .icon-btn:focus-visible, .presets button:focus-visible, select:focus-visible {
+
+button:focus-visible, select:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
@@ -363,7 +549,7 @@ select {
 }
 .icon-btn:hover { background: var(--line); color: var(--text); }
 
-/* ---------------------------------------------------------- rodapé */
+/* ----------------------------------------------------------------- footer */
 
 footer {
   margin-top: 14px;
@@ -371,6 +557,8 @@ footer {
   color: var(--muted);
   font-size: 12px;
 }
+
+#version { opacity: 0.7; }
 
 .toast {
   position: fixed;
