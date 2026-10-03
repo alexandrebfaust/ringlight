@@ -1,0 +1,11 @@
+{
+  "appName": {
+    "message": "Ringlight: ring light for video calls"
+  },
+  "appDesc": {
+    "message": "Lights your face in video calls with a band of light around the page. Turns on by itself when a tab uses the camera."
+  },
+  "commandToggle": {
+    "message": "Turn the ring light on or off"
+  }
+}

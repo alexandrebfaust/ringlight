@@ -1,3 +1,4 @@
+// Generated from src/app.js by scripts/sync-extension.mjs. Edit the original.
 const $ = (id) => document.getElementById(id);
 const has = (feature) => Backend.features.has(feature);
 

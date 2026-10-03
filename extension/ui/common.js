@@ -1,3 +1,4 @@
+// Generated from src/common.js by scripts/sync-extension.mjs. Edit the original.
 // Helpers shared by the settings window and the tray panel.
 
 const KELVIN_PRESETS = [

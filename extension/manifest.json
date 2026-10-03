@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_appName__",
+  "short_name": "Ringlight",
+  "description": "__MSG_appDesc__",
+  "version": "0.4.0",
+  "default_locale": "en",
+  "minimum_chrome_version": "111",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_title": "Ringlight",
+    "default_popup": "ui/flyout.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png"
+    }
+  },
+  "options_ui": {
+    "page": "ui/index.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/media-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["ui/backend.js", "ui/paint.js", "content/overlay.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "commands": {
+    "toggle": {
+      "suggested_key": { "default": "Alt+Shift+L" },
+      "description": "__MSG_commandToggle__"
+    }
+  }
+}

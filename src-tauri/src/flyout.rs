@@ -8,9 +8,10 @@ use tauri::{
 };
 
 pub const LABEL: &str = "flyout";
-/// Panel size in logical px (scaled by the monitor's DPI when shown).
+/// Panel width in logical px (scaled by the monitor's DPI when shown). The
+/// height follows the panel's content, which reports it via [`resize`].
 const WIDTH: f64 = 340.0;
-const HEIGHT: f64 = 192.0;
+pub const INITIAL_HEIGHT: f64 = 360.0;
 /// Gap between the panel and the taskbar / screen edge, logical px.
 const MARGIN: f64 = 12.0;
 /// Clicking the tray icon while the panel is open first steals its focus,
@@ -20,7 +21,7 @@ const REOPEN_GUARD: Duration = Duration::from_millis(350);
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("flyout.html".into()))
         .title("Ringlight")
-        .inner_size(WIDTH, HEIGHT)
+        .inner_size(WIDTH, INITIAL_HEIGHT)
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -54,6 +55,7 @@ pub fn toggle(app: &AppHandle, icon: Rect) {
         return;
     }
 
+    *state.flyout_icon.lock().unwrap() = Some(icon);
     place(app, &w, icon);
     let hide_from_capture = state.settings.lock().unwrap().hide_from_capture;
     let _ = w.set_content_protected(hide_from_capture);
@@ -69,6 +71,19 @@ pub fn hide(app: &AppHandle) {
     if w.is_visible().unwrap_or(false) {
         let _ = w.hide();
         *app.state::<AppState>().flyout_hidden_at.lock().unwrap() = Some(Instant::now());
+    }
+}
+
+/// The panel's content changed height (e.g. another color mode shows more
+/// controls): resize the window and keep it anchored next to the tray icon.
+pub fn resize(app: &AppHandle, height: f64) {
+    let state = app.state::<AppState>();
+    *state.flyout_height.lock().unwrap() = height.clamp(120.0, 800.0);
+    let icon = *state.flyout_icon.lock().unwrap();
+    if let (Some(w), Some(icon)) = (window(app), icon) {
+        if w.is_visible().unwrap_or(false) {
+            place(app, &w, icon);
+        }
     }
 }
 
@@ -88,7 +103,8 @@ fn place(app: &AppHandle, w: &WebviewWindow, icon: Rect) {
     };
 
     let scale = m.scale_factor();
-    let (fw, fh, gap) = (WIDTH * scale, HEIGHT * scale, MARGIN * scale);
+    let height = *app.state::<AppState>().flyout_height.lock().unwrap();
+    let (fw, fh, gap) = (WIDTH * scale, height * scale, MARGIN * scale);
     let wa = m.work_area();
     let (left, top) = (wa.position.x as f64, wa.position.y as f64);
     let (right, bottom) = (left + wa.size.width as f64, top + wa.size.height as f64);

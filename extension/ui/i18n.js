@@ -1,3 +1,4 @@
+// Generated from src/i18n.js by scripts/sync-extension.mjs. Edit the original.
 // Settings window strings. Backend strings (tray, errors) live in src-tauri/src/i18n.rs.
 window.I18N = {
   en: {

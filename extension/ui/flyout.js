@@ -1,3 +1,4 @@
+// Generated from src/flyout.js by scripts/sync-extension.mjs. Edit the original.
 const $ = (id) => document.getElementById(id);
 // Set right away: in the extension the popup sizes itself from the page.
 document.documentElement.dataset.host = Backend.kind;

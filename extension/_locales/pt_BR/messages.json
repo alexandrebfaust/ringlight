@@ -1,0 +1,11 @@
+{
+  "appName": {
+    "message": "Ringlight: luz de anel para reuniões"
+  },
+  "appDesc": {
+    "message": "Ilumina seu rosto nas videochamadas com uma faixa de luz ao redor da página. Acende sozinha quando uma aba usa a câmera."
+  },
+  "commandToggle": {
+    "message": "Ligar ou desligar a ringlight"
+  }
+}

@@ -1,3 +1,4 @@
+// Generated from src/paint.js by scripts/sync-extension.mjs. Edit the original.
 // Paints the light colors and runs the effects. Shared by overlay.html (the
 // real ring) and the settings window (the preview lamp).
 //

@@ -1,11 +1,13 @@
 {
   "name": "ringlight",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.4.0",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "extension:sync": "node scripts/sync-extension.mjs",
+    "extension:pack": "node scripts/pack-extension.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

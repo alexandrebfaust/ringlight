@@ -34,6 +34,10 @@ pub struct AppState {
     pub tray_items: Mutex<Option<tray::TrayItems>>,
     /// When the tray panel was last hidden (see `flyout::REOPEN_GUARD`).
     pub flyout_hidden_at: Mutex<Option<Instant>>,
+    /// The panel's content height (logical px) and the tray icon it opened
+    /// from, so it can be resized in place.
+    pub flyout_height: Mutex<f64>,
+    pub flyout_icon: Mutex<Option<tauri::Rect>>,
 }
 
 fn current(app: &AppHandle) -> Settings {
@@ -150,6 +154,11 @@ async fn open_settings(app: AppHandle) {
 #[tauri::command]
 async fn hide_flyout(app: AppHandle) {
     flyout::hide(&app);
+}
+
+#[tauri::command]
+async fn resize_flyout(app: AppHandle, height: f64) {
+    flyout::resize(&app, height);
 }
 
 #[tauri::command]
@@ -312,6 +321,8 @@ pub fn run() {
                 hide_generation: AtomicU64::new(0),
                 tray_items: Mutex::new(None),
                 flyout_hidden_at: Mutex::new(None),
+                flyout_height: Mutex::new(flyout::INITIAL_HEIGHT),
+                flyout_icon: Mutex::new(None),
             });
 
             if let Err(e) = register_hotkey(&handle, "", &hotkey) {
@@ -347,6 +358,7 @@ pub fn run() {
             app_info,
             open_settings,
             hide_flyout,
+            resize_flyout,
             get_settings,
             list_monitors,
             update_settings,

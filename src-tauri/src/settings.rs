@@ -5,6 +5,7 @@ pub const DEFAULT_COLOR: &str = "#ffefe1"; // 5600 K
 
 const LANGUAGES: [&str; 3] = ["auto", "pt", "en"];
 const COLOR_MODES: [&str; 4] = ["solid", "linear", "conic", "sides"];
+const SHAPES: [&str; 4] = ["frame", "oval", "circle", "bars"];
 const EFFECTS: [&str; 4] = ["none", "rotate", "pulse", "hue"];
 const MAX_STOPS: usize = 5;
 
@@ -25,6 +26,10 @@ pub struct Settings {
     /// `"auto"` (follow Windows), `"pt"` or `"en"`.
     pub language: String,
 
+    /// `"frame"` (band around every edge), `"oval"` (ring touching the
+    /// edges), `"circle"` (round ring in the middle) or `"bars"` (left and
+    /// right bars).
+    pub shape: String,
     /// `"solid"`, `"linear"`, `"conic"` or `"sides"`.
     pub color_mode: String,
     /// Solid color as `#rrggbb`.
@@ -93,6 +98,7 @@ impl Default for Settings {
         Self {
             enabled: true,
             language: "auto".into(),
+            shape: "frame".into(),
             color_mode: "solid".into(),
             color: DEFAULT_COLOR.into(),
             kelvin: Some(5600),
@@ -133,6 +139,7 @@ fn fix_color(value: &mut String) {
 impl Settings {
     pub fn sanitize(&mut self) {
         pick(&mut self.language, &LANGUAGES);
+        pick(&mut self.shape, &SHAPES);
         pick(&mut self.color_mode, &COLOR_MODES);
         pick(&mut self.effect, &EFFECTS);
 
@@ -152,7 +159,7 @@ impl Settings {
         self.speed = self.speed.clamp(1, 10);
         self.opacity = self.opacity.clamp(5, 100);
         self.intensity = self.intensity.clamp(10, 100);
-        self.thickness = self.thickness.clamp(4, 300);
+        self.thickness = self.thickness.clamp(4, 1000);
         self.softness = self.softness.min(200);
         self.radius = self.radius.min(300);
         if self.monitor.is_empty() {
